@@ -45,7 +45,7 @@
   .bubble {
     position: absolute;
     bottom: -60px;
-    padding: 18px 18px;
+    padding: 14px 20px;
     background: rgba(20, 30, 45, 0.55);
     border: 1px solid #4fd1ff;
     border-radius: 20px;
@@ -75,6 +75,7 @@
     top: 50%; left: 50%;
     transform: translate(-50%, -50%);
     font-size: 8rem;
+    font-weight: 800;
     color: #4fd1ff;
     text-shadow: 0 0 20px #4fd1ff, 0 0 40px #2ea8e0;
     z-index: 4;
@@ -87,14 +88,15 @@
     100% { transform: translate(-50%,-50%) scale(1); opacity: 1; }
   }
 
-  /* ---------- MESSAGE PRINCIPAL ---------- */
+  /* ---------- MESSAGE PRINCIPAL (taille corrigée : 2.2rem, pas 8rem) ---------- */
   #main-message {
     position: absolute;
     top: 50%; left: 50%;
     transform: translate(-50%, -50%);
     width: 85%;
     text-align: center;
-    font-size: 8rem;
+    font-size: 2.2rem;
+    font-weight: 700;
     color: #eaffff;
     text-shadow: 0 0 12px #4fd1ff, 0 0 24px #4fd1ff;
     z-index: 4;
@@ -129,7 +131,7 @@
     cursor: pointer;
   }
 
-  /* ---------- ECRAN DE CLOTURE ---------- */
+  /* ---------- ECRAN DE CLOTURE (tailles corrigées) ---------- */
   #closing-screen {
     position: absolute;
     top: 0; left: 0;
@@ -152,13 +154,14 @@
   #closing-message {
     width: 85%;
     text-align: center;
-    font-size: 8rem;
+    font-size: 2rem;
+    font-weight: 700;
     color: #eaffff;
     text-shadow: 0 0 12px #4fd1ff, 0 0 24px #4fd1ff;
   }
   #close-btn {
     padding: 12px 40px;
-    font-size: 8rem;
+    font-size: 1.1rem;
     font-weight: 800;
     color: #eaffff;
     background: rgba(20,30,45,0.6);
@@ -210,21 +213,17 @@
 
   <div id="final-black"></div>
 
-  <!-- PLACEHOLDER : ta musique. Remplace "musique.mp3" par le nom exact de ton fichier uploadé -->
+  <!-- PLACEHOLDER : ta musique -->
   <audio id="bg-audio" src="The_Kid_LAROI___Justin_Bieber_-_Stay__Instrumental_-Slowed___Reverb-(48k).m4a" loop></audio>
 
   <script>
     // ==================================================================
     // PLACEHOLDERS À MODIFIER TOI-MÊME
     // ==================================================================
-
-    // liste des images du diaporama (uploade-les sur GitHub et mets les noms exacts ici)
     const BACKGROUND_IMAGES = [
       'IMG_20260809_135725_276.png', 'IMG_20260809_135637_764.png', 'image_ac4fbea5.png'
-      // ajoute d'autres noms de fichiers ici, ex : 'photo2.jpg', 'photo3.jpg'
     ];
 
-    // textes des bulles flottantes (à remplacer par ce que tu veux)
     const BUBBLE_MESSAGES = [
       "I have the power of the Miraculous",
       "And the more I am a genius 🤘😌",
@@ -238,7 +237,6 @@
       "So it was a mistake"
     ];
 
-    // durée totale du spectacle de fusées, en secondes
     const SHOW_DURATION = 60;
 
     // ==================================================================
@@ -258,7 +256,6 @@
     const ctx = canvas.getContext('2d');
     const bubblesLayer = document.getElementById('bubbles-layer');
 
-    // on garde une trace de TOUS les timers actifs pour pouvoir tout arrêter au clic Close
     let activeIntervals = [];
     let activeTimeouts = [];
     let animationFrameId = null;
@@ -278,7 +275,7 @@
     // ECRAN START
     // ==================================================================
     startBtn.addEventListener('click', () => {
-      audio.play().catch(() => {}); // lancé ici = autorisé par le navigateur
+      audio.play().catch(() => {});
       startScreen.style.opacity = '0';
       trackTimeout(setTimeout(() => { startScreen.style.display = 'none'; }, 800));
       startSequence();
@@ -307,23 +304,20 @@
     }
 
     // ==================================================================
-    // MESSAGE PRINCIPAL -> fondu lent pendant que le spectacle démarre
+    // MESSAGE PRINCIPAL
     // ==================================================================
     function showMainMessage() {
       mainMessageEl.classList.add('show');
 
-      // le spectacle démarre tout de suite derrière le message
       startFireworksShow();
       startBubbles();
       startSlideshow();
 
-      // après quelques secondes, le message s'efface lentement
       trackTimeout(setTimeout(() => {
         mainMessageEl.classList.remove('show');
         mainMessageEl.classList.add('fade-out');
       }, 4000));
 
-      // à la fin de la durée du spectacle, on affiche l'écran de clôture
       trackTimeout(setTimeout(() => {
         closingScreen.classList.add('show');
       }, SHOW_DURATION * 1000));
@@ -344,7 +338,6 @@
       trackInterval(setInterval(() => {
         index = (index + 1) % BACKGROUND_IMAGES.length;
         const nextImage = `url('${BACKGROUND_IMAGES[index]}')`;
-
         if (showingBg1) {
           bg2.style.backgroundImage = nextImage;
           bg2.style.opacity = '1';
@@ -355,11 +348,11 @@
           bg2.style.opacity = '0';
         }
         showingBg1 = !showingBg1;
-      }, 6000)); // change d'image toutes les 6 secondes
+      }, 6000));
     }
 
     // ==================================================================
-    // FEUX D'ARTIFICE REALISTES (fusée qui monte + explosion + traînées)
+    // FEUX D'ARTIFICE REALISTES
     // ==================================================================
     function resize() {
       canvas.width = window.innerWidth;
@@ -368,18 +361,21 @@
     resize();
     window.addEventListener('resize', resize);
 
-    const colors = ['#ff3b3b', '#ff8a00', '#ffd700', '#ffffff', '#ff6b6b', '#4fd1ff'];
+    const colors = ['#ff3b3b', '#ff8a00', '#ffd700', '#ffffff', '#ff6b6b', '#4fd1ff', '#c86bff', '#4dff9e'];
 
-    // une fusée qui monte avant d'exploser
+    // fusée : montée lente et visible, avec traînée
     class Rocket {
       constructor(x, targetY) {
         this.x = x;
         this.y = canvas.height;
         this.targetY = targetY;
-        this.speed = 6 + Math.random() * 2;
+        this.speed = 1.6 + Math.random() * 1; // montée lente
         this.dead = false;
+        this.trail = [];
       }
       update() {
+        this.trail.push({ x: this.x, y: this.y });
+        if (this.trail.length > 14) this.trail.shift();
         this.y -= this.speed;
         if (this.y <= this.targetY) {
           this.dead = true;
@@ -387,39 +383,69 @@
         }
       }
       draw() {
+        for (let i = 0; i < this.trail.length; i++) {
+          const p = this.trail[i];
+          ctx.save();
+          ctx.globalAlpha = (i / this.trail.length) * 0.6;
+          ctx.fillStyle = '#ffe9a8';
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 1.8, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
         ctx.save();
         ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = '#ffe9a8';
+        ctx.shadowBlur = 8;
         ctx.beginPath();
-        ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+        ctx.arc(this.x, this.y, 2.5, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
     }
 
-    // particule d'explosion avec effet "saule pleureur" (retombe en traînée)
+    // particule : couleur aléatoire propre à chaque particule (explosion multicolore)
+    // + historique de positions pour une vraie traînée lumineuse qui descend lentement
     class Particle {
-      constructor(x, y, color) {
-        this.x = x; this.y = y; this.color = color;
+      constructor(x, y) {
+        this.x = x; this.y = y;
+        this.color = colors[Math.floor(Math.random() * colors.length)];
         const angle = Math.random() * Math.PI * 2;
-        const speed = Math.random() * 5 + 2;
+        const speed = Math.random() * 2.8 + 1.8;
         this.vx = Math.cos(angle) * speed;
         this.vy = Math.sin(angle) * speed;
         this.alpha = 1;
-        this.gravity = 0.06;
-        this.size = Math.random() * 2 + 1;
-        this.flicker = Math.random() * 0.05;
+        this.gravity = 0.05;
+        this.size = Math.random() * 2.5 + 1.5;
+        this.decay = Math.random() * 0.005 + 0.003;
+        this.trail = [];
       }
       update() {
+        this.trail.push({ x: this.x, y: this.y });
+        if (this.trail.length > 10) this.trail.shift();
         this.vy += this.gravity;
-        this.vx *= 0.98; // ralentit progressivement (traînée réaliste)
+        this.vx *= 0.99;
         this.x += this.vx;
         this.y += this.vy;
-        this.alpha -= 0.01;
+        this.alpha -= this.decay;
       }
       draw() {
+        for (let i = 0; i < this.trail.length; i++) {
+          const p = this.trail[i];
+          const trailAlpha = (i / this.trail.length) * this.alpha;
+          ctx.save();
+          ctx.globalAlpha = Math.max(trailAlpha, 0);
+          ctx.fillStyle = this.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, this.size * 0.6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
         ctx.save();
-        ctx.globalAlpha = Math.max(this.alpha + (Math.random() * this.flicker), 0);
+        ctx.globalAlpha = Math.max(this.alpha, 0);
         ctx.fillStyle = this.color;
+        ctx.shadowColor = this.color;
+        ctx.shadowBlur = 6;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
         ctx.fill();
@@ -430,21 +456,18 @@
     let rockets = [];
     let particles = [];
 
+    // chaque particule tire sa propre couleur -> explosion multicolore
     function explode(x, y) {
-      const color = colors[Math.floor(Math.random() * colors.length)];
       const count = 70 + Math.floor(Math.random() * 30);
-      for (let i = 0; i < count; i++) particles.push(new Particle(x, y, color));
+      for (let i = 0; i < count; i++) particles.push(new Particle(x, y));
     }
 
     function animate() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
       rockets.forEach(r => { r.update(); r.draw(); });
       rockets = rockets.filter(r => !r.dead);
-
       particles.forEach(p => { p.update(); p.draw(); });
       particles = particles.filter(p => p.alpha > 0);
-
       animationFrameId = requestAnimationFrame(animate);
     }
     animate();
@@ -456,8 +479,7 @@
     }
 
     function startFireworksShow() {
-      // lance une fusée toutes les ~700ms pendant SHOW_DURATION secondes
-      const rocketInterval = trackInterval(setInterval(launchRocket, 700));
+      const rocketInterval = trackInterval(setInterval(launchRocket, 1300));
       trackTimeout(setTimeout(() => clearInterval(rocketInterval), SHOW_DURATION * 1000));
     }
 
@@ -482,7 +504,6 @@
         createBubble(BUBBLE_MESSAGES[i % BUBBLE_MESSAGES.length]);
         i++;
       }, 2500));
-      // on arrête aussi les nouvelles bulles à la fin du spectacle
       trackTimeout(setTimeout(() => clearInterval(bubbleInterval), SHOW_DURATION * 1000));
     }
 
@@ -491,7 +512,7 @@
     // ==================================================================
     closeBtn.addEventListener('click', () => {
       finalBlack.classList.add('show');
-      trackTimeout(setTimeout(stopEverything, 2000)); // laisse le fondu noir se terminer avant de tout couper
+      trackTimeout(setTimeout(stopEverything, 2000));
     });
   </script>
 
