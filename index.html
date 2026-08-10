@@ -12,19 +12,13 @@
     background: #000;
   }
 
-  /* ---------- DIAPORAMA DE FOND (2 calques en fondu) ---------- */
-  .bg-layer {
+  /* ---------- FOND ETOILE (canvas statique, dessiné une fois) ---------- */
+  #stars {
     position: absolute;
     top: 0; left: 0;
     width: 100%; height: 100%;
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    transition: opacity 2s ease;
     z-index: 0;
   }
-  #bg1 { opacity: 1; }
-  #bg2 { opacity: 0; }
 
   #fireworks {
     position: absolute;
@@ -33,40 +27,50 @@
     z-index: 1;
   }
 
-  #bubbles-layer {
+  /* ---------- SCENE 3D (le cercle de bulles/images) ---------- */
+  #stage {
     position: absolute;
     top: 0; left: 0;
     width: 100%; height: 100%;
     z-index: 2;
+    perspective: 900px;       /* donne la profondeur 3D */
     overflow: hidden;
+  }
+  #ring {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 0; height: 0;
+    transform-style: preserve-3d; /* les enfants gardent leur position 3D */
+  }
+  .ring-item {
+    position: absolute;
+    top: 0; left: 0;
+    transform-style: preserve-3d;
+    backface-visibility: hidden;
     pointer-events: none;
   }
-
-  .bubble {
-    position: absolute;
-    bottom: -60px;
-    padding: 14px 20px;
+  .ring-bubble {
+    padding: 10px 16px;
     background: rgba(20, 30, 45, 0.55);
     border: 1px solid #4fd1ff;
     border-radius: 20px;
     color: #eaffff;
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
     white-space: normal;
-    max-width: 60vw;
+    max-width: 220px;
     text-align: center;
     box-sizing: border-box;
     box-shadow: 0 0 8px #4fd1ff, 0 0 16px rgba(79, 209, 255, 0.5);
     text-shadow: 0 0 6px #4fd1ff;
-    animation-name: floatUp;
-    animation-timing-function: linear;
-    animation-fill-mode: forwards;
   }
-  @keyframes floatUp {
-    0%   { transform: translateY(0);       opacity: 0; }
-    10%  { opacity: 1; }
-    90%  { opacity: 1; }
-    100% { transform: translateY(-115vh);  opacity: 0; }
+  .ring-image {
+    width: 140px;
+    height: 140px;
+    border-radius: 16px;
+    object-fit: cover;
+    border: 2px solid #4fd1ff;
+    box-shadow: 0 0 12px #4fd1ff;
   }
 
   /* ---------- COUNTDOWN (bleu néon) ---------- */
@@ -88,7 +92,7 @@
     100% { transform: translate(-50%,-50%) scale(1); opacity: 1; }
   }
 
-  /* ---------- MESSAGE PRINCIPAL (taille corrigée : 2.2rem, pas 8rem) ---------- */
+  /* ---------- MESSAGE PRINCIPAL ---------- */
   #main-message {
     position: absolute;
     top: 50%; left: 50%;
@@ -101,7 +105,7 @@
     text-shadow: 0 0 12px #4fd1ff, 0 0 24px #4fd1ff;
     z-index: 4;
     opacity: 0;
-    transition: opacity 3s ease; /* fondu LENT */
+    transition: opacity 3s ease;
   }
   #main-message.show { opacity: 1; transition: opacity 0.8s ease; }
   #main-message.fade-out { opacity: 0; transition: opacity 3s ease; }
@@ -131,7 +135,7 @@
     cursor: pointer;
   }
 
-  /* ---------- ECRAN DE CLOTURE (tailles corrigées) ---------- */
+  /* ---------- ECRAN DE CLOTURE ---------- */
   #closing-screen {
     position: absolute;
     top: 0; left: 0;
@@ -147,10 +151,7 @@
     pointer-events: none;
     transition: opacity 1.5s ease;
   }
-  #closing-screen.show {
-    opacity: 1;
-    pointer-events: auto;
-  }
+  #closing-screen.show { opacity: 1; pointer-events: auto; }
   #closing-message {
     width: 85%;
     text-align: center;
@@ -171,7 +172,7 @@
     cursor: pointer;
   }
 
-  /* ---------- ECRAN NOIR FINAL (après clic Close) ---------- */
+  /* ---------- ECRAN NOIR FINAL ---------- */
   #final-black {
     position: absolute;
     top: 0; left: 0;
@@ -187,21 +188,22 @@
 </head>
 <body>
 
-  <div id="bg1" class="bg-layer"></div>
-  <div id="bg2" class="bg-layer"></div>
-
+  <canvas id="stars"></canvas>
   <canvas id="fireworks"></canvas>
-  <div id="bubbles-layer"></div>
+
+  <div id="stage">
+    <div id="ring"></div>
+  </div>
 
   <div id="countdown"></div>
   <div id="main-message">
-    <!-- PLACEHOLDER : remplace ce texte par ton message principal -->
+    <!-- PLACEHOLDER : message principal -->
     Forever Grateful for You ❤️
   </div>
 
   <div id="closing-screen">
     <div id="closing-message">
-      <!-- PLACEHOLDER : remplace ce texte par ton message de clôture -->
+      <!-- PLACEHOLDER : message de clôture -->
       Thank you for being here 💙
     </div>
     <button id="close-btn">Close</button>
@@ -218,10 +220,11 @@
 
   <script>
     // ==================================================================
-    // PLACEHOLDERS À MODIFIER TOI-MÊME
+    // PLACEHOLDERS
     // ==================================================================
-    const BACKGROUND_IMAGES = [
-      'IMG_20260809_135725_276.png', 'IMG_20260809_135637_764.png','Screenshot_20260809-151954.png', 'image_ac4fbea5.png'
+    // images utilisées comme vignettes flottantes DANS le cercle (plus en fond)
+    const RING_IMAGES = [
+      'IMG_20260809_135725_276.png', 'IMG_20260809_135637_764.png', 'image_ac4fbea5.png'
     ];
 
     const BUBBLE_MESSAGES = [
@@ -237,7 +240,8 @@
       "So it was a mistake"
     ];
 
-    const SHOW_DURATION = 60;
+    const SHOW_DURATION = 60;      // durée des feux d'artifice, en secondes
+    const CLOSING_DELAY = 180;     // délai avant l'apparition du bouton Close, en secondes (3 min)
 
     // ==================================================================
     // ELEMENTS
@@ -250,15 +254,16 @@
     const closeBtn       = document.getElementById('close-btn');
     const finalBlack      = document.getElementById('final-black');
     const audio           = document.getElementById('bg-audio');
-    const bg1 = document.getElementById('bg1');
-    const bg2 = document.getElementById('bg2');
-    const canvas = document.getElementById('fireworks');
-    const ctx = canvas.getContext('2d');
-    const bubblesLayer = document.getElementById('bubbles-layer');
+    const starsCanvas = document.getElementById('stars');
+    const starsCtx = starsCanvas.getContext('2d');
+    const fireworksCanvas = document.getElementById('fireworks');
+    const ctx = fireworksCanvas.getContext('2d');
+    const ring = document.getElementById('ring');
 
     let activeIntervals = [];
     let activeTimeouts = [];
-    let animationFrameId = null;
+    let animationFrameId = null;   // boucle des feux d'artifice
+    let ringFrameId = null;        // boucle du cercle 3D
 
     function trackInterval(id) { activeIntervals.push(id); return id; }
     function trackTimeout(id)  { activeTimeouts.push(id); return id; }
@@ -267,9 +272,34 @@
       activeIntervals.forEach(clearInterval);
       activeTimeouts.forEach(clearTimeout);
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (ringFrameId) cancelAnimationFrame(ringFrameId);
+      ctx.clearRect(0, 0, fireworksCanvas.width, fireworksCanvas.height);
       audio.pause();
     }
+
+    // ==================================================================
+    // FOND ETOILE (dessiné une seule fois, pas besoin de l'animer)
+    // ==================================================================
+    function drawStars() {
+      starsCanvas.width = window.innerWidth;
+      starsCanvas.height = window.innerHeight;
+      starsCtx.fillStyle = '#000';
+      starsCtx.fillRect(0, 0, starsCanvas.width, starsCanvas.height);
+      const starCount = Math.floor((starsCanvas.width * starsCanvas.height) / 3000);
+      for (let i = 0; i < starCount; i++) {
+        const x = Math.random() * starsCanvas.width;
+        const y = Math.random() * starsCanvas.height;
+        const r = Math.random() * 1.3;
+        starsCtx.globalAlpha = Math.random() * 0.8 + 0.2;
+        starsCtx.fillStyle = '#ffffff';
+        starsCtx.beginPath();
+        starsCtx.arc(x, y, r, 0, Math.PI * 2);
+        starsCtx.fill();
+      }
+      starsCtx.globalAlpha = 1;
+    }
+    drawStars();
+    window.addEventListener('resize', drawStars);
 
     // ==================================================================
     // ECRAN START
@@ -303,15 +333,11 @@
       tick();
     }
 
-    // ==================================================================
-    // MESSAGE PRINCIPAL
-    // ==================================================================
     function showMainMessage() {
       mainMessageEl.classList.add('show');
 
       startFireworksShow();
-      startBubbles();
-      startSlideshow();
+      startRing();
 
       trackTimeout(setTimeout(() => {
         mainMessageEl.classList.remove('show');
@@ -320,56 +346,112 @@
 
       trackTimeout(setTimeout(() => {
         closingScreen.classList.add('show');
-      }, SHOW_DURATION * 1000));
+      }, CLOSING_DELAY * 1000));
     }
 
     // ==================================================================
-    // DIAPORAMA DE FOND
+    // CERCLE 3D DE BULLES + IMAGES
     // ==================================================================
-    function startSlideshow() {
-      if (BACKGROUND_IMAGES.length <= 1) {
-        bg1.style.backgroundImage = `url('${BACKGROUND_IMAGES[0]}')`;
-        return;
-      }
-      let index = 0;
-      bg1.style.backgroundImage = `url('${BACKGROUND_IMAGES[0]}')`;
-      let showingBg1 = true;
+    // principe :
+    //  - chaque élément (bulle ou image) est placé à un ANGLE fixe autour
+    //    de l'axe vertical, à une distance RADIUS du centre (comme les
+    //    heures sur une horloge, mais en 3D avec rotateY + translateZ)
+    //  - le conteneur "ring" tourne en continu (rotation automatique)
+    //  - l'utilisateur peut glisser le doigt pour ajouter sa propre
+    //    rotation par dessus (rotationManuelle)
+    //  - chaque élément monte aussi verticalement en boucle (translateY)
 
-      trackInterval(setInterval(() => {
-        index = (index + 1) % BACKGROUND_IMAGES.length;
-        const nextImage = `url('${BACKGROUND_IMAGES[index]}')`;
-        if (showingBg1) {
-          bg2.style.backgroundImage = nextImage;
-          bg2.style.opacity = '1';
-          bg1.style.opacity = '0';
+    const RADIUS = 260; // distance des bulles par rapport au centre
+    let ringItems = [];
+    let ringAngle = 0;        // rotation automatique cumulée
+    let manualOffset = 0;     // rotation ajoutée par le glissement du doigt
+    let autoSpeed = 0.06;     // vitesse de rotation automatique (degrés/frame)
+
+    function buildRingContent() {
+      // on mélange bulles de texte et images dans le même cercle
+      const items = [];
+      BUBBLE_MESSAGES.forEach(text => items.push({ type: 'bubble', content: text }));
+      RING_IMAGES.forEach(src => items.push({ type: 'image', content: src }));
+
+      const total = items.length;
+      items.forEach((item, i) => {
+        const el = document.createElement('div');
+        el.className = 'ring-item';
+
+        if (item.type === 'bubble') {
+          el.innerHTML = `<div class="ring-bubble">${item.content}</div>`;
         } else {
-          bg1.style.backgroundImage = nextImage;
-          bg1.style.opacity = '1';
-          bg2.style.opacity = '0';
+          el.innerHTML = `<img class="ring-image" src="${item.content}">`;
         }
-        showingBg1 = !showingBg1;
-      }, 6000));
+
+        // angle fixe réparti uniformément sur 360°
+        const angle = (360 / total) * i;
+        // décalage vertical de départ aléatoire, pour ne pas avoir
+        // tous les éléments alignés à la même hauteur
+        // valeur uniquement POSITIVE -> tout démarre en dessous du cercle,
+        // jamais au centre, et monte ensuite naturellement vers le haut
+        const startY = Math.random() * 500 + 100;
+        const speed = Math.random() * 0.4 + 0.3; // vitesse de montée propre à chaque élément
+
+        ring.appendChild(el);
+        ringItems.push({ el, angle, y: startY, speed });
+      });
     }
 
-    // ==================================================================
-    // FEUX D'ARTIFICE REALISTES
-    // ==================================================================
-    function resize() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+    function ringLoop() {
+      ringAngle += autoSpeed;
+      const totalAngle = ringAngle + manualOffset;
+
+      ringItems.forEach(item => {
+        item.y -= item.speed;
+        if (item.y < -450) item.y = Math.random() * 300 + 400; // recyclage : repart du bas, hauteur variable
+
+        item.el.style.transform =
+          `rotateY(${item.angle + totalAngle}deg) translateZ(-${RADIUS}px) translateY(${item.y}px)`;
+      });
+
+      ringFrameId = requestAnimationFrame(ringLoop);
     }
-    resize();
-    window.addEventListener('resize', resize);
+
+    function startRing() {
+      buildRingContent();
+      ringLoop();
+    }
+
+    // glissement du doigt pour tourner manuellement le cercle
+    let touchStartX = null;
+    let manualOffsetAtTouchStart = 0;
+
+    document.addEventListener('touchstart', (e) => {
+      touchStartX = e.touches[0].clientX;
+      manualOffsetAtTouchStart = manualOffset;
+    });
+    document.addEventListener('touchmove', (e) => {
+      if (touchStartX === null) return;
+      const deltaX = e.touches[0].clientX - touchStartX;
+      // on convertit le déplacement en pixels en degrés de rotation
+      manualOffset = manualOffsetAtTouchStart + deltaX * 0.3;
+    });
+    document.addEventListener('touchend', () => { touchStartX = null; });
+
+    // ==================================================================
+    // FEUX D'ARTIFICE AVEC DOUBLE EXPLOSION
+    // ==================================================================
+    function resizeFireworks() {
+      fireworksCanvas.width = window.innerWidth;
+      fireworksCanvas.height = window.innerHeight;
+    }
+    resizeFireworks();
+    window.addEventListener('resize', resizeFireworks);
 
     const colors = ['#ff3b3b', '#ff8a00', '#ffd700', '#ffffff', '#ff6b6b', '#4fd1ff', '#c86bff', '#4dff9e'];
 
-    // fusée : montée lente et visible, avec traînée
     class Rocket {
       constructor(x, targetY) {
         this.x = x;
-        this.y = canvas.height;
+        this.y = fireworksCanvas.height;
         this.targetY = targetY;
-        this.speed = 1.6 + Math.random() * 1; // montée lente
+        this.speed = 1.6 + Math.random() * 1;
         this.dead = false;
         this.trail = [];
       }
@@ -404,10 +486,10 @@
       }
     }
 
-    // particule : couleur aléatoire propre à chaque particule (explosion multicolore)
-    // + historique de positions pour une vraie traînée lumineuse qui descend lentement
+    // particule d'explosion. canExplodeAgain = true -> particule de 1er niveau,
+    // qui pourra elle-même exploser une seconde fois en cours de trajectoire
     class Particle {
-      constructor(x, y) {
+      constructor(x, y, canExplodeAgain) {
         this.x = x; this.y = y;
         this.color = colors[Math.floor(Math.random() * colors.length)];
         const angle = Math.random() * Math.PI * 2;
@@ -419,8 +501,16 @@
         this.size = Math.random() * 2.5 + 1.5;
         this.decay = Math.random() * 0.005 + 0.003;
         this.trail = [];
+
+        // seule une partie des particules de 1er niveau ré-explosera
+        this.canExplodeAgain = canExplodeAgain;
+        this.willReExplode = canExplodeAgain && Math.random() < 0.08; // 8% de chance (moins fréquent)
+        this.reExplodeIn = Math.random() * 25 + 15; // délai en frames avant la 2e explosion
+        this.age = 0;
+        this.hasReExploded = false;
       }
       update() {
+        this.age++;
         this.trail.push({ x: this.x, y: this.y });
         if (this.trail.length > 10) this.trail.shift();
         this.vy += this.gravity;
@@ -428,6 +518,13 @@
         this.x += this.vx;
         this.y += this.vy;
         this.alpha -= this.decay;
+
+        // déclenche la seconde explosion au bon moment
+        if (this.willReExplode && !this.hasReExploded && this.age >= this.reExplodeIn) {
+          this.hasReExploded = true;
+          miniExplode(this.x, this.y);
+          this.alpha = 0; // la particule d'origine disparaît, remplacée par la mini-explosion
+        }
       }
       draw() {
         for (let i = 0; i < this.trail.length; i++) {
@@ -456,55 +553,41 @@
     let rockets = [];
     let particles = [];
 
-    // chaque particule tire sa propre couleur -> explosion multicolore
+    // explosion principale (1er niveau) -> certaines pourront re-exploser
     function explode(x, y) {
-      const count = 70 + Math.floor(Math.random() * 30);
-      for (let i = 0; i < count; i++) particles.push(new Particle(x, y));
+      const count = 60 + Math.floor(Math.random() * 25);
+      for (let i = 0; i < count; i++) particles.push(new Particle(x, y, true));
     }
 
-    function animate() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // mini-explosion (2e niveau) -> plus petite, ne re-explose jamais
+    function miniExplode(x, y) {
+      const count = 8 + Math.floor(Math.random() * 8);
+      for (let i = 0; i < count; i++) {
+        const p = new Particle(x, y, false);
+        p.size *= 0.6; // particules plus petites pour la 2e explosion
+        particles.push(p);
+      }
+    }
+
+    function animateFireworks() {
+      ctx.clearRect(0, 0, fireworksCanvas.width, fireworksCanvas.height);
       rockets.forEach(r => { r.update(); r.draw(); });
       rockets = rockets.filter(r => !r.dead);
       particles.forEach(p => { p.update(); p.draw(); });
       particles = particles.filter(p => p.alpha > 0);
-      animationFrameId = requestAnimationFrame(animate);
+      animationFrameId = requestAnimationFrame(animateFireworks);
     }
-    animate();
+    animateFireworks();
 
     function launchRocket() {
-      const x = Math.random() * canvas.width * 0.7 + canvas.width * 0.15;
-      const targetY = Math.random() * canvas.height * 0.4 + canvas.height * 0.1;
+      const x = Math.random() * fireworksCanvas.width * 0.7 + fireworksCanvas.width * 0.15;
+      const targetY = Math.random() * fireworksCanvas.height * 0.4 + fireworksCanvas.height * 0.1;
       rockets.push(new Rocket(x, targetY));
     }
 
     function startFireworksShow() {
       const rocketInterval = trackInterval(setInterval(launchRocket, 1300));
       trackTimeout(setTimeout(() => clearInterval(rocketInterval), SHOW_DURATION * 1000));
-    }
-
-    // ==================================================================
-    // BULLES DE MESSAGES
-    // ==================================================================
-    function createBubble(text) {
-      const bubble = document.createElement('div');
-      bubble.className = 'bubble';
-      bubble.textContent = text;
-      const leftPos = Math.random() * 30 + 5;
-      bubble.style.left = leftPos + '%';
-      const duration = Math.random() * 8 + 18;
-      bubble.style.animationDuration = duration + 's';
-      bubblesLayer.appendChild(bubble);
-      trackTimeout(setTimeout(() => bubble.remove(), duration * 1000));
-    }
-
-    function startBubbles() {
-      let i = 0;
-      const bubbleInterval = trackInterval(setInterval(() => {
-        createBubble(BUBBLE_MESSAGES[i % BUBBLE_MESSAGES.length]);
-        i++;
-      }, 2500));
-      trackTimeout(setTimeout(() => clearInterval(bubbleInterval), SHOW_DURATION * 1000));
     }
 
     // ==================================================================
