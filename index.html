@@ -50,23 +50,23 @@
     pointer-events: none;
   }
   .ring-bubble {
-    padding: 10px 16px;
+    padding: 16px 24px;
     background: rgba(20, 30, 45, 0.55);
     border: 1px solid #4fd1ff;
-    border-radius: 20px;
+    border-radius: 28px;
     color: #eaffff;
-    font-size: 18px;
+    font-size: 26px;
     font-weight: 700;
     white-space: normal;
-    max-width: 220px;
+    max-width: 320px;
     text-align: center;
     box-sizing: border-box;
     box-shadow: 0 0 8px #4fd1ff, 0 0 16px rgba(79, 209, 255, 0.5);
     text-shadow: 0 0 6px #4fd1ff;
   }
   .ring-image {
-    width: 140px;
-    height: 140px;
+    width: 200px;
+    height: 200px;
     border-radius: 16px;
     object-fit: cover;
     border: 2px solid #4fd1ff;
@@ -361,7 +361,7 @@
     //    rotation par dessus (rotationManuelle)
     //  - chaque élément monte aussi verticalement en boucle (translateY)
 
-    const RADIUS = 260; // distance des bulles par rapport au centre
+    const RADIUS = 380; // distance des bulles par rapport au centre
     let ringItems = [];
     let ringAngle = 0;        // rotation automatique cumulée
     let manualOffset = 0;     // rotation ajoutée par le glissement du doigt
