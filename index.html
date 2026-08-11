@@ -48,25 +48,27 @@
     transform-style: preserve-3d;
     backface-visibility: hidden;
     pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.8s ease;
   }
   .ring-bubble {
-    padding: 16px 24px;
+    padding: 14px 20px;
     background: rgba(20, 30, 45, 0.55);
     border: 1px solid #4fd1ff;
     border-radius: 28px;
     color: #eaffff;
-    font-size: 26px;
+    font-size: 22px;
     font-weight: 700;
     white-space: normal;
-    max-width: 320px;
+    max-width: 250px;
     text-align: center;
     box-sizing: border-box;
     box-shadow: 0 0 8px #4fd1ff, 0 0 16px rgba(79, 209, 255, 0.5);
     text-shadow: 0 0 6px #4fd1ff;
   }
   .ring-image {
-    width: 200px;
-    height: 200px;
+    width: 170px;
+    height: 170px;
     border-radius: 16px;
     object-fit: cover;
     border: 2px solid #4fd1ff;
@@ -198,13 +200,17 @@
   <div id="countdown"></div>
   <div id="main-message">
     <!-- PLACEHOLDER : message principal -->
-    Thank you forever. Nuray Thank you, my dear. ❤️
+    Thank you forever.
+    ,Nuray Thank you,🥰❤️
+    
   </div>
 
   <div id="closing-screen">
     <div id="closing-message">
       <!-- PLACEHOLDER : message de clôture -->
       Məsləhət: Çox ağlamağı dayandırın, durbin 😏
+       in two years ,
+      I'm sure you cried dozens of liters🤣🤪. 
     </div>
     <button id="close-btn">Close</button>
   </div>
@@ -292,16 +298,25 @@
       starsCanvas.height = window.innerHeight;
       starsCtx.fillStyle = '#000';
       starsCtx.fillRect(0, 0, starsCanvas.width, starsCanvas.height);
-      const starCount = Math.floor((starsCanvas.width * starsCanvas.height) / 3000);
+      // plus d'étoiles, et plus lumineuses en moyenne
+      const starCount = Math.floor((starsCanvas.width * starsCanvas.height) / 1600);
       for (let i = 0; i < starCount; i++) {
         const x = Math.random() * starsCanvas.width;
         const y = Math.random() * starsCanvas.height;
-        const r = Math.random() * 1.3;
-        starsCtx.globalAlpha = Math.random() * 0.8 + 0.2;
+        const isBright = Math.random() < 0.12; // une étoile sur ~8 est une "grosse" étoile avec halo
+        const r = isBright ? Math.random() * 1.4 + 1.3 : Math.random() * 1.3 + 0.3;
+
+        starsCtx.save();
+        starsCtx.globalAlpha = isBright ? 1 : Math.random() * 0.5 + 0.5;
         starsCtx.fillStyle = '#ffffff';
+        if (isBright) {
+          starsCtx.shadowColor = '#bfe9ff';
+          starsCtx.shadowBlur = 6;
+        }
         starsCtx.beginPath();
         starsCtx.arc(x, y, r, 0, Math.PI * 2);
         starsCtx.fill();
+        starsCtx.restore();
       }
       starsCtx.globalAlpha = 1;
     }
@@ -367,20 +382,38 @@
     //  - l'utilisateur peut glisser le doigt pour ajouter sa propre
     //    rotation par dessus (rotationManuelle)
     //  - chaque élément monte aussi verticalement en boucle (translateY)
+    //  - chaque élément a un DELAI d'apparition propre : il reste invisible
+    //    et immobile tant que son délai n'est pas écoulé, puis il apparaît
+    //    en fondu et commence à monter. Cela évite que tout le monde
+    //    apparaisse en même temps au premier tour.
 
-    const RADIUS = 380; // distance des bulles par rapport au centre
+    const RADIUS = 520; // distance des bulles par rapport au centre (plus grand = moins de chevauchement)
     let ringItems = [];
     let ringAngle = 0;        // rotation automatique cumulée
     let manualOffset = 0;     // rotation ajoutée par le glissement du doigt
     let autoSpeed = 0.06;     // vitesse de rotation automatique (degrés/frame)
 
+    // mélange aléatoire (Fisher-Yates) pour ne pas avoir tous les longs
+    // textes ou toutes les images groupés côte à côte sur le cercle
+    function shuffleArray(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
     function buildRingContent() {
       // on mélange bulles de texte et images dans le même cercle
-      const items = [];
+      let items = [];
       BUBBLE_MESSAGES.forEach(text => items.push({ type: 'bubble', content: text }));
       RING_IMAGES.forEach(src => items.push({ type: 'image', content: src }));
+      items = shuffleArray(items);
 
       const total = items.length;
+      // délai total sur lequel on étale les apparitions (en frames, ~60/s)
+      const spreadFrames = total * 45;
+
       items.forEach((item, i) => {
         const el = document.createElement('div');
         el.className = 'ring-item';
@@ -395,13 +428,15 @@
         const angle = (360 / total) * i;
         // décalage vertical de départ aléatoire, pour ne pas avoir
         // tous les éléments alignés à la même hauteur
-        // valeur uniquement POSITIVE -> tout démarre en dessous du cercle,
-        // jamais au centre, et monte ensuite naturellement vers le haut
         const startY = Math.random() * 500 + 100;
         const speed = Math.random() * 0.4 + 0.3; // vitesse de montée propre à chaque élément
 
+        // délai avant que cet élément commence à apparaître/monter,
+        // réparti sur toute la durée du premier tour + un peu de hasard
+        const delay = Math.floor((spreadFrames / total) * i + Math.random() * 30);
+
         ring.appendChild(el);
-        ringItems.push({ el, angle, y: startY, speed });
+        ringItems.push({ el, angle, y: startY, speed, delay, revealed: false });
       });
     }
 
@@ -410,6 +445,18 @@
       const totalAngle = ringAngle + manualOffset;
 
       ringItems.forEach(item => {
+        if (!item.revealed) {
+          if (item.delay > 0) {
+            item.delay--;
+            // reste positionné mais invisible tant que le délai n'est pas fini
+            item.el.style.transform =
+              `rotateY(${item.angle + totalAngle}deg) translateZ(-${RADIUS}px) translateY(${item.y}px)`;
+            return;
+          }
+          item.revealed = true;
+          item.el.style.opacity = '1';
+        }
+
         item.y -= item.speed;
         if (item.y < -450) item.y = Math.random() * 300 + 400; // recyclage : repart du bas, hauteur variable
 
@@ -534,77 +581,4 @@
         }
       }
       draw() {
-        for (let i = 0; i < this.trail.length; i++) {
-          const p = this.trail[i];
-          const trailAlpha = (i / this.trail.length) * this.alpha;
-          ctx.save();
-          ctx.globalAlpha = Math.max(trailAlpha, 0);
-          ctx.fillStyle = this.color;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, this.size * 0.6, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-        }
-        ctx.save();
-        ctx.globalAlpha = Math.max(this.alpha, 0);
-        ctx.fillStyle = this.color;
-        ctx.shadowColor = this.color;
-        ctx.shadowBlur = 6;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
-    }
-
-    let rockets = [];
-    let particles = [];
-
-    // explosion principale (1er niveau) -> certaines pourront re-exploser
-    function explode(x, y) {
-      const count = 60 + Math.floor(Math.random() * 25);
-      for (let i = 0; i < count; i++) particles.push(new Particle(x, y, true));
-    }
-
-    // mini-explosion (2e niveau) -> plus petite, ne re-explose jamais
-    function miniExplode(x, y) {
-      const count = 8 + Math.floor(Math.random() * 8);
-      for (let i = 0; i < count; i++) {
-        const p = new Particle(x, y, false);
-        p.size *= 0.6; // particules plus petites pour la 2e explosion
-        particles.push(p);
-      }
-    }
-
-    function animateFireworks() {
-      ctx.clearRect(0, 0, fireworksCanvas.width, fireworksCanvas.height);
-      rockets.forEach(r => { r.update(); r.draw(); });
-      rockets = rockets.filter(r => !r.dead);
-      particles.forEach(p => { p.update(); p.draw(); });
-      particles = particles.filter(p => p.alpha > 0);
-      animationFrameId = requestAnimationFrame(animateFireworks);
-    }
-    animateFireworks();
-
-    function launchRocket() {
-      const x = Math.random() * fireworksCanvas.width * 0.7 + fireworksCanvas.width * 0.15;
-      const targetY = Math.random() * fireworksCanvas.height * 0.4 + fireworksCanvas.height * 0.1;
-      rockets.push(new Rocket(x, targetY));
-    }
-
-    function startFireworksShow() {
-      const rocketInterval = trackInterval(setInterval(launchRocket, 1300));
-      trackTimeout(setTimeout(() => clearInterval(rocketInterval), SHOW_DURATION * 1000));
-    }
-
-    // ==================================================================
-    // BOUTON CLOSE
-    // ==================================================================
-    closeBtn.addEventListener('click', () => {
-      finalBlack.classList.add('show');
-      trackTimeout(setTimeout(stopEverything, 2000));
-    });
-  </script>
-
-</body>
-</html>
+        for (let i = 0; i < this.trail.length; i
