@@ -202,7 +202,6 @@
     <!-- PLACEHOLDER : message principal -->
     Thank you forever.
     ,Nuray Thank you,🥰❤️
-    
   </div>
 
   <div id="closing-screen">
@@ -210,7 +209,7 @@
       <!-- PLACEHOLDER : message de clôture -->
       Məsləhət: Çox ağlamağı dayandırın, durbin 😏
        in two years ,
-      I'm sure you cried dozens of liters🤣🤪. 
+      I'm sure you cried dozens of liters🤣🤪.
     </div>
     <button id="close-btn">Close</button>
   </div>
@@ -253,8 +252,8 @@
       "Bitirmək istəmirdim, amma yaxşı idi."
     ];
 
-    const SHOW_DURATION = 60;      // durée des feux d'artifice, en secondes
-    const CLOSING_DELAY = 180;     // délai avant l'apparition du bouton Close, en secondes (3 min)
+    const SHOW_DURATION = 120;      // durée des feux d'artifice, en secondes
+    const CLOSING_DELAY = 240;     // délai avant l'apparition du bouton Close, en secondes (4 min)
 
     // ==================================================================
     // ELEMENTS
@@ -581,4 +580,77 @@
         }
       }
       draw() {
-        for (let i = 0; i < this.trail.length; i
+        for (let i = 0; i < this.trail.length; i++) {
+          const p = this.trail[i];
+          const trailAlpha = (i / this.trail.length) * this.alpha;
+          ctx.save();
+          ctx.globalAlpha = Math.max(trailAlpha, 0);
+          ctx.fillStyle = this.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, this.size * 0.6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+        ctx.save();
+        ctx.globalAlpha = Math.max(this.alpha, 0);
+        ctx.fillStyle = this.color;
+        ctx.shadowColor = this.color;
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    let rockets = [];
+    let particles = [];
+
+    // explosion principale (1er niveau) -> certaines pourront re-exploser
+    function explode(x, y) {
+      const count = 60 + Math.floor(Math.random() * 25);
+      for (let i = 0; i < count; i++) particles.push(new Particle(x, y, true));
+    }
+
+    // mini-explosion (2e niveau) -> plus petite, ne re-explose jamais
+    function miniExplode(x, y) {
+      const count = 8 + Math.floor(Math.random() * 8);
+      for (let i = 0; i < count; i++) {
+        const p = new Particle(x, y, false);
+        p.size *= 0.6; // particules plus petites pour la 2e explosion
+        particles.push(p);
+      }
+    }
+
+    function animateFireworks() {
+      ctx.clearRect(0, 0, fireworksCanvas.width, fireworksCanvas.height);
+      rockets.forEach(r => { r.update(); r.draw(); });
+      rockets = rockets.filter(r => !r.dead);
+      particles.forEach(p => { p.update(); p.draw(); });
+      particles = particles.filter(p => p.alpha > 0);
+      animationFrameId = requestAnimationFrame(animateFireworks);
+    }
+    animateFireworks();
+
+    function launchRocket() {
+      const x = Math.random() * fireworksCanvas.width * 0.7 + fireworksCanvas.width * 0.15;
+      const targetY = Math.random() * fireworksCanvas.height * 0.4 + fireworksCanvas.height * 0.1;
+      rockets.push(new Rocket(x, targetY));
+    }
+
+    function startFireworksShow() {
+      const rocketInterval = trackInterval(setInterval(launchRocket, 1300));
+      trackTimeout(setTimeout(() => clearInterval(rocketInterval), SHOW_DURATION * 1000));
+    }
+
+    // ==================================================================
+    // BOUTON CLOSE
+    // ==================================================================
+    closeBtn.addEventListener('click', () => {
+      finalBlack.classList.add('show');
+      trackTimeout(setTimeout(stopEverything, 2000));
+    });
+  </script>
+
+</body>
+</html>
